@@ -3,9 +3,9 @@ import os
 import time
 
 class Player:
-    def __init__(self, animations_folder_url, animation_speed, rect_width, rect_height, speed, gravity_speed):
-        self.animations = []
-        self.setup_animations(animations_folder_url)
+    def __init__(self, images_folder_url, animation_speed, rect_width, rect_height, speed, gravity_speed):
+        self.images = []
+        self.load_images(images_folder_url)
         self.animation_speed = animation_speed
         self.rect = pg.Rect(0, 0, rect_width, rect_height)
         self.speed = speed
@@ -15,14 +15,15 @@ class Player:
         self.mirrored = False
         self.time_of_last_update = None
         
-    def setup_animations(self, animations_folder_url):
+    def load_images(self, images_folder_url):
         # tries to add from 1.png to x.png being x the number of files in the folder
-        animations = os.listdir(animations_folder_url)
 
-        for n in range(1, len(animations) + 1):
-            img_url = animations_folder_url + f"{n}.png"
+        files = os.listdir(images_folder_url)
+
+        for n in range(1, len(files) + 1):
+            img_url = images_folder_url + f"{n}.png"
             img_surf = pg.image.load(img_url).convert_alpha()
-            self.animations.append(img_surf)
+            self.images.append(img_surf)
 
     def spawn(self, x, y):
         self.x = x
@@ -60,7 +61,7 @@ class Player:
             self.animate = False
 
         # apply vertical movement
-        self.y += (self.gravity_speed * elapsed_time) + (self.vectory * elapsed_time)
+        self.y += elapsed_time * (self.gravity_speed + self.vectory)
 
         if self.vectory + 2*(self.gravity_speed * elapsed_time) <= 0:
             self.vectory += 2*(self.gravity_speed * elapsed_time)
@@ -73,12 +74,12 @@ class Player:
 
     def draw(self, canvas):
         if self.animate:
-            animation_duration = len(self.animations) / self.animation_speed
-            frame = int( (time.time() % animation_duration) * (len(self.animations) / animation_duration) )
+            animation_duration = len(self.images) / self.animation_speed
+            frame = int( (time.time() % animation_duration) * (len(self.images) / animation_duration) )
         else:
             frame = 0
 
-        surf = self.animations[frame]
+        surf = self.images[frame]
         rect = surf.get_rect(center = self.rect.center)
         if self.mirrored:
             surf = pg.transform.flip(surf, flip_x=True, flip_y=False)
