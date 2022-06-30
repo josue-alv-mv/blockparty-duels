@@ -3,17 +3,24 @@ import os
 import time
 
 class Player:
-    def __init__(self, images_folder_url, animation_speed, rect_width, rect_height, speed, gravity_speed):
+    def __init__(
+        self, images_folder_url, animation_speed, rect_width, rect_height, speed, gravity_speed,
+        on_floor_confidence
+    ):
         self.images = []
         self.load_images(images_folder_url)
         self.animation_speed = animation_speed
         self.rect = pg.Rect(0, 0, rect_width, rect_height)
         self.speed = speed
         self.gravity_speed = gravity_speed
+        self.on_floor_confidence = on_floor_confidence
         self.vectory = 0
         self.animate = False
         self.mirrored = False
         self.time_of_last_update = None
+        self.default = {
+            "animation_speed": animation_speed
+        }
         
     def load_images(self, images_folder_url):
         # tries to add from 1.png to x.png being x the number of files in the folder
@@ -30,8 +37,12 @@ class Player:
         self.y = y
         self.update_rect()
 
-    def jump(self):
-        self.vectory = -(1.8*self.gravity_speed)
+    def request_jump(self, collision_blocks):
+        trusted_rect = self.rect.copy()
+        trusted_rect.height += self.on_floor_confidence
+
+        if trusted_rect.collidelistall(collision_blocks):
+            self.vectory = -(2*self.gravity_speed)
 
     def update_rect(self):
         self.rect.center = (self.x, self.y)
@@ -70,10 +81,13 @@ class Player:
         old_y = self.y
         self.y += elapsed_time * (self.gravity_speed + self.vectory)
 
-        if self.vectory + 2*(self.gravity_speed * elapsed_time) <= 0:
-            self.vectory += 2*(self.gravity_speed * elapsed_time)
+        if self.vectory + 3*(self.gravity_speed * elapsed_time) <= 0:
+            self.vectory += 3*(self.gravity_speed * elapsed_time)
+            self.animation_speed = self.default["animation_speed"] // 2
+            self.animate = True
         else:
             self.vectory = 0
+            self.animation_speed = self.default["animation_speed"]
 
         self.update_rect()
         if self.rect.collidelistall(collision_blocks):

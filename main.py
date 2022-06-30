@@ -11,9 +11,10 @@ class Game:
             images_folder_url="images/melyniu/",
             animation_speed=90,
             rect_width=39,
-            rect_height=76, #106
+            rect_height=76, #106 total height
             speed=300,
-            gravity_speed=600
+            gravity_speed=600,
+            on_floor_confidence=16 # calc = gravity_speed/fps - 1 (can stuck player if fps is lower than 35)
         )
         self.background = Image(
             url="images/background.png",
@@ -37,9 +38,9 @@ class Game:
 
                 elif event.type == pg.KEYDOWN:
                     if event.key == pg.K_UP:
-                        self.player.jump()
+                        self.player.request_jump(collision_blocks=self.platform.slots)
 
-            self.player.update(self.platform.slots)
+            self.player.update(collision_blocks=self.platform.slots)
             if self.player.y > self.canvas.height:
                 self.player.x = 640
                 self.player.y = 320
