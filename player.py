@@ -31,12 +31,12 @@ class Player:
         self.update_rect()
 
     def jump(self):
-        self.vectory = -(2*self.gravity_speed)
+        self.vectory = -(1.8*self.gravity_speed)
 
     def update_rect(self):
         self.rect.center = (self.x, self.y)
 
-    def update(self):
+    def update(self, collision_blocks):
         if self.time_of_last_update is None:
             self.time_of_last_update = time.time()
             return
@@ -44,6 +44,7 @@ class Player:
         elapsed_time = time.time() - self.time_of_last_update
 
         # apply horizontal movement
+        old_x = self.x
         step_distance = self.speed * elapsed_time
         pressed_keys = pg.key.get_pressed()
 
@@ -60,7 +61,13 @@ class Player:
         else:
             self.animate = False
 
+        self.update_rect()
+        if self.rect.collidelistall(collision_blocks):
+            self.x = old_x
+            self.update_rect()
+
         # apply vertical movement
+        old_y = self.y
         self.y += elapsed_time * (self.gravity_speed + self.vectory)
 
         if self.vectory + 2*(self.gravity_speed * elapsed_time) <= 0:
@@ -68,8 +75,12 @@ class Player:
         else:
             self.vectory = 0
 
-        # update rect and time_of_last_update
         self.update_rect()
+        if self.rect.collidelistall(collision_blocks):
+            self.y = old_y
+            self.update_rect()
+
+        # finish
         self.time_of_last_update = time.time()
 
     def draw(self, canvas):

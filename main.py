@@ -10,8 +10,8 @@ class Game:
         self.player = Player(
             images_folder_url="images/melyniu/",
             animation_speed=90,
-            rect_width=34,
-            rect_height=89,
+            rect_width=39,
+            rect_height=76, #106
             speed=300,
             gravity_speed=600
         )
@@ -25,7 +25,7 @@ class Game:
             x=self.canvas.centerx,
             y=self.canvas.centery + 200
         )
-        self.player.spawn(576, 250)
+        self.player.spawn(640, 320)
         self.platform.shuffle()
         self.running = True
 
@@ -39,11 +39,15 @@ class Game:
                     if event.key == pg.K_UP:
                         self.player.jump()
 
-            self.player.update()
+            self.player.update(self.platform.slots)
+            if self.player.y > self.canvas.height:
+                self.player.x = 640
+                self.player.y = 320
+                self.player.update_rect()
 
             self.background.draw(self.canvas)
-            self.player.draw(self.canvas)
             self.platform.draw(self.canvas)
+            self.player.draw(self.canvas)
             self.canvas.update()
 
 game = Game()
