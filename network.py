@@ -60,10 +60,10 @@ class Network:
                     break
 
             # log messages ...
-            # if recvd.endswith(self.message_splitter):
-            #     print(f'Received: <{recvd[:-1]}>')
-            # else:
-            #     print(f'Received: <{recvd}>')
+            if recvd.endswith(self.message_splitter):
+                print(f'Received: <{recvd[:-1]}>')
+            else:
+                print(f'Received: <{recvd}>')
 
             while recvd.count(self.message_splitter) > 0:
                 tag, message = recvd[:recvd.index(self.message_splitter)].split(self.content_splitter)
