@@ -108,6 +108,7 @@ class Opponent:
         self.x = data["x"]
         self.y = data["y"]
         self.pressed_keys = data["pressed_keys"]
+
         if "flags" in data:
             if "jump" in data["flags"]:
                 self.jump()

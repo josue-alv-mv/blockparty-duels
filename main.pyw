@@ -1,5 +1,6 @@
 import pygame as pg
 import sys
+import time
 from canvas import Canvas
 from network import Client, Server
 from player import Player
@@ -14,7 +15,7 @@ class Game:
     def __init__(self):
         pg.init()
         self.name = "nordss.blockparty-duels"
-        self.canvas = Canvas(width=1280, height=720, caption="Blockparty Duels")
+        self.canvas = Canvas(width=854, height=480, caption="Blockparty Duels")
         self.player = Player(
             images_folder_url="images/lonelybryxn/", animation_speed=90,
             rect_width=39, rect_height=76, speed=300, gravity_speed=600,
@@ -61,10 +62,6 @@ class Game:
             height=50, font_size=28, max_text_length=15, rect_alpha=96,
             keys=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "."]
         )
-        self.user_events = {
-            "send_json": pg.USEREVENT
-        }
-        pg.time.set_timer(self.user_events["send_json"], 500)
         self.player.spawn(640, 320)
         self.platform.shuffle()
 
@@ -103,8 +100,8 @@ class Game:
                     pg.quit()
                     sys.exit()
 
-            for tag, message in self.network.get():
-                if tag == "game-name" and message == self.name:
+            for message in self.network.get():
+                if message.tag == "game-name" and message.text == self.name:
                     self.network.send(tag="game-name", message=self.name)
                     self.match_screen()
 
@@ -136,8 +133,8 @@ class Game:
                         else:
                             self.texts["ip_address"].text = f"Connection error :("
 
-            for tag, message in self.network.get():
-                if tag == "game-name" and message == self.name:
+            for message in self.network.get():
+                if message.tag == "game-name" and message.text == self.name:
                     self.match_screen()
 
             self.buttons["back_from_join_room"].update()
@@ -169,20 +166,20 @@ class Game:
                     if event.key in [pg.K_LEFT, pg.K_RIGHT]:
                         self.player.send_json(self.network)
 
-                # elif event.type == self.user_events["send_json"]:
-                #     self.player.send_json(self.network)
-
-            for tag, message in self.network.get():
-                if tag == "get" and message == "player_json":
+            for message in self.network.get():
+                if message.tag == "get" and message.text == "player_json":
                     self.player.send_json(self.network)
 
-                elif tag == "player":
-                    self.opponent.load_json(message)
+                elif message.tag == "player":
+                    self.opponent.load_json(message.text)
 
             if not self.opponent.active:
                 self.network.send(tag="get", message="player_json")
                 self.canvas.update()
                 continue
+
+            if time.time() - self.player.time_of_last_data_sync > 1:
+                self.player.send_json(self.network)
 
             self.player.update(collision_blocks=self.platform.slots)
             self.opponent.update(collision_blocks=self.platform.slots)

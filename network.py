@@ -10,13 +10,14 @@ class Network:
         self.buf_size = 16384
         self.content_splitter = '|'
         self.message_splitter = '\n'
-        self.data = {}
+        self.data = []
         self.active = False
 
     def get(self):
+        # data can be lost if the recv_thread saves a message after this function copies data ? ...
         data = self.data.copy()
         self.data.clear()
-        return data.items()
+        return data
 
     def send(self, tag, message):
         if self.active:
@@ -63,12 +64,12 @@ class Network:
             if recvd.endswith(self.message_splitter):
                 print(f'Received: <{recvd[:-1]}>')
             else:
-                print(f'Received: <{recvd}>')
+                print(f'Broken message: <{recvd}>')
 
             while recvd.count(self.message_splitter) > 0:
-                tag, message = recvd[:recvd.index(self.message_splitter)].split(self.content_splitter)
+                tag, text = recvd[:recvd.index(self.message_splitter)].split(self.content_splitter)
                 recvd = recvd[recvd.index(self.message_splitter) + 1:]
-                self.data[tag] = message
+                self.data.append(Message(tag,text))
 
     def close(self):
         self.socket.close()
@@ -123,3 +124,9 @@ class Server(Network):
                 self.recv_thread = threading.Thread(target=self.receive, daemon=True)
                 self.recv_thread.start()
                 self.active = True
+
+
+class Message:
+    def __init__ (self, tag, text):
+        self.tag = tag
+        self.text = text

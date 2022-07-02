@@ -1,4 +1,3 @@
-from email import message
 import pygame as pg
 import os
 import time
@@ -20,6 +19,7 @@ class Player:
         self.animate = False
         self.mirrored = False
         self.time_of_last_update = None
+        self.time_of_last_data_sync = -1
         self.default = {
             "animation_speed": animation_speed
         }
@@ -130,3 +130,4 @@ class Player:
 
         json_text = json.dumps(data, separators=(",", ":"))
         network.send(tag="player", message=json_text)
+        self.time_of_last_data_sync = time.time()
