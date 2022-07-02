@@ -1,12 +1,13 @@
+from sys import flags
 import pygame as pg
 import os
 import time
 import json
 
-class Player:
+class Opponent:
     def __init__(
-        self, images_folder_url, animation_speed, rect_width, rect_height, speed, gravity_speed,
-        on_floor_confidence
+        self, images_folder_url, animation_speed, rect_width,
+        rect_height, speed, gravity_speed
     ):
         self.images = []
         self.load_images(images_folder_url)
@@ -14,16 +15,16 @@ class Player:
         self.rect = pg.Rect(0, 0, rect_width, rect_height)
         self.speed = speed
         self.gravity_speed = gravity_speed
-        self.on_floor_confidence = on_floor_confidence
+        self.pressed_keys = []
         self.vectory = 0
         self.animate = False
         self.mirrored = False
         self.time_of_last_update = None
-        self.time_of_last_data_sync = -1
+        self.active = False
         self.default = {
             "animation_speed": animation_speed
         }
-        
+
     def load_images(self, images_folder_url):
         # tries to add from 1.png to x.png being x the number of files in the folder
         files = os.listdir(images_folder_url)
@@ -33,18 +34,8 @@ class Player:
             img_surf = pg.image.load(img_url).convert_alpha()
             self.images.append(img_surf)
 
-    def spawn(self, x, y):
-        self.x = x
-        self.y = y
-        self.update_rect()
-
-    def request_jump(self, collision_blocks):
-        trusted_rect = self.rect.copy()
-        trusted_rect.height += self.on_floor_confidence
-
-        if trusted_rect.collidelistall(collision_blocks):
-            self.vectory = -(2*self.gravity_speed)
-            return True
+    def jump(self):
+        self.vectory = -(2*self.gravity_speed)
 
     def update_rect(self):
         self.rect.center = (self.x, self.y)
@@ -59,23 +50,19 @@ class Player:
         # apply horizontal movement
         old_x = self.x
         step_distance = self.speed * elapsed_time
-        pressed_keys = pg.key.get_pressed()
 
-        if pressed_keys[pg.K_LEFT] and pressed_keys[pg.K_RIGHT]:
+        if self.pressed_keys in [ [], ["left", "right"] ]:
             self.animate = False
 
-        elif pressed_keys[pg.K_LEFT]:
+        elif self.pressed_keys == ["left"]:
             self.x -= step_distance
             self.mirrored = True
             self.animate = True
 
-        elif pressed_keys[pg.K_RIGHT]:
+        elif self.pressed_keys == ["right"]:
             self.x += step_distance
             self.mirrored = False
             self.animate = True
-
-        else:
-            self.animate = False
 
         self.update_rect()
         if self.rect.collidelistall(collision_blocks):
@@ -116,18 +103,15 @@ class Player:
 
         canvas.blit(surf, rect)
 
-    def send_json(self, network, flags=[]):
-        data = { "x": round(self.x, 1), "y": round(self.y, 1), "pressed_keys": [] }
-        pressed_keys = pg.key.get_pressed()
+    def load_json(self, json_text):
+        data = json.loads(json_text)
+        self.x = data["x"]
+        self.y = data["y"]
+        self.pressed_keys = data["pressed_keys"]
 
-        if pressed_keys[pg.K_LEFT]: 
-            data["pressed_keys"].append("left")
-        if pressed_keys[pg.K_RIGHT]:
-            data["pressed_keys"].append("right")
+        if "flags" in data:
+            if "jump" in data["flags"]:
+                self.jump()
 
-        if flags:
-            data["flags"] = flags
-
-        json_text = json.dumps(data, separators=(",", ":"))
-        network.send(tag="player", message=json_text)
-        self.time_of_last_data_sync = time.time()
+        self.update_rect()
+        self.active = True
