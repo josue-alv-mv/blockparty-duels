@@ -1,113 +1,30 @@
-from sys import flags
-import pygame as pg
-import os
-import time
 import json
+from player import Player
 
-class Opponent:
+class Opponent(Player):
     def __init__(
-        self, images_folder_url, animation_speed, rect_width,
-        rect_height, speed, gravity_speed
+        self, images_folder_url, animation_speed, rect_width, rect_height, speed, gravity_speed
     ):
-        self.images = []
-        self.load_images(images_folder_url)
-        self.animation_speed = animation_speed
-        self.rect = pg.Rect(0, 0, rect_width, rect_height)
-        self.speed = speed
-        self.gravity_speed = gravity_speed
+        super().__init__(
+            images_folder_url, animation_speed, rect_width,
+            rect_height, speed, gravity_speed
+        )
         self.pressed_keys = []
-        self.vectory = 0
-        self.animate = False
-        self.mirrored = False
-        self.time_of_last_update = None
         self.active = False
-        self.default = {
-            "animation_speed": animation_speed
-        }
 
-    def load_images(self, images_folder_url):
-        # tries to add from 1.png to x.png being x the number of files in the folder
-        files = os.listdir(images_folder_url)
-
-        for n in range(1, len(files) + 1):
-            img_url = images_folder_url + f"{n}.png"
-            img_surf = pg.image.load(img_url).convert_alpha()
-            self.images.append(img_surf)
+    def get_pressed_keys(self):
+        return self.pressed_keys
 
     def jump(self):
         self.vectory = -(2*self.gravity_speed)
-
-    def update_rect(self):
-        self.rect.center = (self.x, self.y)
-
-    def update(self, collision_blocks):
-        if self.time_of_last_update is None:
-            self.time_of_last_update = time.time()
-            return
-
-        elapsed_time = time.time() - self.time_of_last_update
-
-        # apply horizontal movement
-        old_x = self.x
-        step_distance = self.speed * elapsed_time
-
-        if self.pressed_keys in [ [], ["left", "right"] ]:
-            self.animate = False
-
-        elif self.pressed_keys == ["left"]:
-            self.x -= step_distance
-            self.mirrored = True
-            self.animate = True
-
-        elif self.pressed_keys == ["right"]:
-            self.x += step_distance
-            self.mirrored = False
-            self.animate = True
-
-        self.update_rect()
-        if self.rect.collidelistall(collision_blocks):
-            self.x = old_x
-            self.update_rect()
-
-        # apply vertical movement
-        old_y = self.y
-        self.y += elapsed_time * (self.gravity_speed + self.vectory)
-
-        if self.vectory + 3*(self.gravity_speed * elapsed_time) <= 0:
-            self.vectory += 3*(self.gravity_speed * elapsed_time)
-            self.animation_speed = self.default["animation_speed"] // 2
-            self.animate = True
-        else:
-            self.vectory = 0
-            self.animation_speed = self.default["animation_speed"]
-
-        self.update_rect()
-        if self.rect.collidelistall(collision_blocks):
-            self.y = old_y
-            self.update_rect()
-
-        # finish
-        self.time_of_last_update = time.time()
-
-    def draw(self, canvas):
-        if self.animate:
-            animation_duration = len(self.images) / self.animation_speed
-            frame = int( (time.time() % animation_duration) * (len(self.images) / animation_duration) )
-        else:
-            frame = 0
-
-        surf = self.images[frame]
-        rect = surf.get_rect(center = self.rect.center)
-        if self.mirrored:
-            surf = pg.transform.flip(surf, flip_x=True, flip_y=False)
-
-        canvas.blit(surf, rect)
 
     def load_json(self, json_text):
         data = json.loads(json_text)
         self.x = data["x"]
         self.y = data["y"]
-        self.pressed_keys = data["pressed_keys"]
+        
+        if "pressed_keys" in data:
+            self.pressed_keys = data["pressed_keys"]
 
         if "flags" in data:
             if "jump" in data["flags"]:

@@ -3,7 +3,7 @@ import sys
 import time
 from canvas import Canvas
 from network import Client, Server
-from player import Player
+from local_player import LocalPlayer
 from opponent import Opponent
 from image import Image
 from platform import Platform
@@ -15,8 +15,8 @@ class Game:
     def __init__(self):
         pg.init()
         self.name = "nordss.blockparty-duels"
-        self.canvas = Canvas(width=854, height=480, caption="Blockparty Duels")
-        self.player = Player(
+        self.canvas = Canvas(width=1280, height=720, caption="Blockparty Duels")
+        self.player = LocalPlayer(
             images_folder_url="images/lonelybryxn/", animation_speed=90,
             rect_width=39, rect_height=76, speed=300, gravity_speed=600,
             on_floor_confidence=16 # calc = gravity_speed/fps - 1 (can stuck player if fps is lower than 35)
@@ -30,8 +30,8 @@ class Game:
             "game": Image(url="images/backgrounds/game_bg.png", hotspot="topleft", x=0, y=0)
         } 
         self.platform = Platform(
-            images_folder_url="images/blocks/", hotspot="center",
-            x=self.canvas.centerx, y=self.canvas.centery + 200
+            images_folder_url="images/blocks/", hotspot="midbottom",
+            x=self.canvas.centerx, y=self.canvas.height - 192
         )
         self.buttons = {
             "create_room": Button(
@@ -55,6 +55,10 @@ class Game:
             "ip_address": Text(
                 hotspot="midbottom", x=self.canvas.centerx, y=self.canvas.centery - 50,
                 text="IP Address", font_size=48
+            ),
+            "waiting_for_an_opponent": Text(
+                hotspot="center", x=self.canvas.centerx, y=self.canvas.centery,
+                text="Waiting for an opponent...", font_size=48
             )
         }
         self.text_field = TextField(
@@ -106,6 +110,7 @@ class Game:
                     self.match_screen()
 
             self.backgrounds["menu"].draw(self.canvas)
+            self.texts["waiting_for_an_opponent"].draw(self.canvas)
             self.canvas.update()
 
     def join_room_screen(self):
