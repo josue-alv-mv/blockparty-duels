@@ -1,6 +1,8 @@
+from email import message
 import pygame as pg
 import os
 import random
+import json
 
 class Platform:
     def __init__(self, images_folder_url, hotspot, x, y):
@@ -9,6 +11,11 @@ class Platform:
         self.color_list = list(self.images.keys())
         self.rect = self.get_rect(hotspot, x, y)
         self.slots = self.get_slots()
+        self.active_slots = self.slots.copy()
+        self.timeout_list = [10, 9, 8, 7, 6, 5, 4, 3, 2.5, 2]
+        self.level = 0
+        self.timeout = None
+        self.chosen_color = None
 
     def load_images(self, images_folder_url):
         for file in os.listdir(images_folder_url):
@@ -37,9 +44,33 @@ class Platform:
             for col,_ in enumerate(self.images)
         ]
 
-    def shuffle(self):
+    def destroy(self):
+        self.active_slots = [self.slots[self.color_list.index(self.chosen_color)]]
+
+    def update(self):
         random.shuffle(self.color_list)
+        self.chosen_color = random.choice(self.color_list)
+        if self.level < len(self.timeout_list): self.timeout = self.timeout_list[self.level]
+        else: self.timeout = self.timeout_list[-1]
+        self.active_slots = self.slots.copy()
 
     def draw(self, canvas):
         for index,color in enumerate(self.color_list):
-            canvas.blit(self.images[color], self.slots[index])
+            if self.slots[index] in self.active_slots:
+                canvas.blit(self.images[color], self.slots[index])
+
+    def send_json(self, network):
+        data = {
+            "color_list": self.color_list,
+            "chosen_color": self.chosen_color,
+            "timeout": self.timeout
+        }
+        json_text = json.dumps(data, separators=(",", ":"))
+        network.send(tag="platform", message=json_text)
+
+    def load_json(self, json_text):
+        data = json.loads(json_text)
+        self.color_list = data["color_list"]
+        self.chosen_color = data["chosen_color"]
+        self.timeout = data["timeout"]
+        self.active_slots = self.slots.copy()

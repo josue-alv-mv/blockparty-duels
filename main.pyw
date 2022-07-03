@@ -1,6 +1,7 @@
 import pygame as pg
 import sys
 import time
+import threading
 from canvas import Canvas
 from network import Client, Server
 from local_player import LocalPlayer
@@ -10,11 +11,13 @@ from platform import Platform
 from text import Text
 from text_field import TextField
 from button import Button
+from progress_bar import ProgressBar
 
 class Game:
     def __init__(self):
         pg.init()
         self.name = "nordss.blockparty-duels"
+        self.level_interval = 5
         self.canvas = Canvas(width=1280, height=720, caption="Blockparty Duels")
         self.player = LocalPlayer(
             images_folder_url="images/lonelybryxn/", animation_speed=90,
@@ -31,7 +34,7 @@ class Game:
         } 
         self.platform = Platform(
             images_folder_url="images/blocks/", hotspot="midbottom",
-            x=self.canvas.centerx, y=self.canvas.height - 192
+            x=self.canvas.centerx, y=self.canvas.height - 96
         )
         self.buttons = {
             "create_room": Button(
@@ -42,23 +45,27 @@ class Game:
                 hotspot="midtop", x=self.canvas.centerx, y=self.canvas.centery + 15,
                 width=180, height=60, text="Join room"
             ),
-            "back_from_join_room": Button(
+            "join_room.back": Button(
                 hotspot="midtop", x=self.canvas.centerx - 65, y=self.canvas.centery + 50,
                 width=105, height=45, text="Back"
             ),
-            "join_from_join_room": Button(
+            "join_room.join": Button(
                 hotspot="midtop", x=self.canvas.centerx + 65, y=self.canvas.centery + 50,
                 width=105, height=45, text="Join"
             )
         }
         self.texts = {
-            "ip_address": Text(
+            "join_room.main": Text(
                 hotspot="midbottom", x=self.canvas.centerx, y=self.canvas.centery - 50,
                 text="IP Address", font_size=48
             ),
             "waiting_for_an_opponent": Text(
                 hotspot="center", x=self.canvas.centerx, y=self.canvas.centery,
                 text="Waiting for an opponent...", font_size=48
+            ),
+            "match.main": Text(
+                hotspot="midbottom", x=self.canvas.centerx, y=self.canvas.centery - 48,
+                text="", font_size=48
             )
         }
         self.text_field = TextField(
@@ -66,8 +73,11 @@ class Game:
             height=50, font_size=28, max_text_length=15, rect_alpha=96,
             keys=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "."]
         )
+        self.progress_bar = ProgressBar(
+            hotspot="center", x=self.canvas.centerx, y=self.canvas.centery, width=384,
+            height=32, border_width=3, padding=3
+        )
         self.player.spawn(640, 320)
-        self.platform.shuffle()
 
     def run(self):
         self.login_screen()
@@ -115,7 +125,7 @@ class Game:
 
     def join_room_screen(self):
         self.network = Client()
-        self.texts["ip_address"].text = f"IP Address"
+        self.texts["join_room.main"].text = f"IP Address"
 
         while True:
             for event in pg.event.get():
@@ -128,31 +138,34 @@ class Game:
                         self.text_field.on_press(event.unicode)
 
                 elif event.type == pg.MOUSEBUTTONDOWN:
-                    if self.buttons["back_from_join_room"].focused:
+                    if self.buttons["join_room.back"].focused:
                         self.login_screen()
 
-                    elif self.buttons["join_from_join_room"].focused:
+                    elif self.buttons["join_room.join"].focused:
                         if self.network.connect(self.text_field.text):
                             self.network.send(tag="game-name", message=self.name)
 
                         else:
-                            self.texts["ip_address"].text = f"Connection error :("
+                            self.texts["join_room.main"].text = f"Connection error :("
 
             for message in self.network.get():
                 if message.tag == "game-name" and message.text == self.name:
                     self.match_screen()
 
-            self.buttons["back_from_join_room"].update()
-            self.buttons["join_from_join_room"].update()
+            self.buttons["join_room.back"].update()
+            self.buttons["join_room.join"].update()
 
             self.backgrounds["menu"].draw(self.canvas)
-            self.texts["ip_address"].draw(self.canvas)
+            self.texts["join_room.main"].draw(self.canvas)
             self.text_field.draw(self.canvas)
-            self.buttons["back_from_join_room"].draw(self.canvas)
-            self.buttons["join_from_join_room"].draw(self.canvas)
+            self.buttons["join_room.back"].draw(self.canvas)
+            self.buttons["join_room.join"].draw(self.canvas)
             self.canvas.update()
 
     def match_screen(self):
+        if not self.network.is_host:
+            self.network.send(tag="start", message="match")
+            
         while True:
             for event in pg.event.get():
                 if event.type == pg.QUIT:
@@ -164,7 +177,7 @@ class Game:
                         self.player.send_json(self.network)
 
                     if event.key == pg.K_UP:
-                        if self.player.request_jump(collision_blocks=self.platform.slots):
+                        if self.player.request_jump(collision_blocks=self.platform.active_slots):
                             self.player.send_json(self.network, flags=["jump"])
 
                 elif event.type == pg.KEYUP:
@@ -172,33 +185,79 @@ class Game:
                         self.player.send_json(self.network)
 
             for message in self.network.get():
-                if message.tag == "get" and message.text == "player_json":
-                    self.player.send_json(self.network)
-
-                elif message.tag == "player":
+                if message.tag == "player":
                     self.opponent.load_json(message.text)
 
+                # host network events
+                if self.network.is_host:
+                    if message.tag == "start" and message.text == "match":
+                        self.async_run(self.match_executor)
+
+                # client network events
+                else:
+                    if message.tag == "platform":
+                        self.platform.load_json(message.text)
+                        self.async_run(self.match_executor)
+
+            if time.time() - self.player.time_of_last_data_sync > 0.5:
+                self.player.send_json(self.network)
+
             if not self.opponent.active:
-                self.network.send(tag="get", message="player_json")
                 self.canvas.update()
                 continue
 
-            if time.time() - self.player.time_of_last_data_sync > 1:
-                self.player.send_json(self.network)
-
-            self.player.update(collision_blocks=self.platform.slots)
-            self.opponent.update(collision_blocks=self.platform.slots)
-
-            if self.player.y > self.canvas.height:
-                self.player.x = 640
-                self.player.y = 320
-                self.player.update_rect()
+            self.player.update(collision_blocks=self.platform.active_slots)
+            self.opponent.update(collision_blocks=self.platform.active_slots)
 
             self.backgrounds["game"].draw(self.canvas)
             self.platform.draw(self.canvas)
             self.opponent.draw(self.canvas)
             self.player.draw(self.canvas)
+            self.texts["match.main"].draw(self.canvas)
+            self.progress_bar.draw(self.canvas)
             self.canvas.update()
 
+    def match_executor(self):
+        if self.network.is_host:
+            self.platform.update()
+            self.platform.send_json(self.network)
+
+        self.texts["match.main"].text = "Get ready!"
+        self.progress_bar.color = "white"
+        self.progress_bar.wait(self.level_interval)
+        self.texts["match.main"].text = self.platform.chosen_color
+        self.progress_bar.color = self.get_rgb_from_chosen_color(self.platform.chosen_color)
+        self.progress_bar.wait(self.platform.timeout)
+        self.platform.destroy()
+        self.texts["match.main"].text = "Wait..."
+        self.progress_bar.color = "white"
+        self.progress_bar.wait(self.level_interval)
+
+        if self.network.is_host:
+            self.platform.level += 1
+            self.async_run(self.match_executor)
+
+    def async_run(self, function):
+        thread = threading.Thread(target=function, daemon=True)
+        thread.start()
+
+    def get_rgb_from_chosen_color(self, color):
+        return {
+            "Blue": (51,70,166),
+            "Brown": (177,106,71),
+            "Gray": (38,38,38),
+            "Green": (71,177,71),
+            "Light Blue": (72,236,237),
+            "Light Gray": (116,116,116),
+            "Light Green": (109,241,109),
+            "Magenta": (175,95,255),
+            "Orange": (247,137,82),
+            "Pink": (240,99,239),
+            "Purple": (102,58,190),
+            "Red": (237,72,72),
+            "White": (237,237,237),
+            "Yellow": (252,224,87)
+        } [color]
+        
 game = Game()
 game.run()
