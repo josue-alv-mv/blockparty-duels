@@ -39,29 +39,29 @@ class Game:
         self.buttons = {
             "create_room": Button(
                 hotspot="midbottom", x=self.canvas.centerx, y=self.canvas.centery - 15,
-                width=180, height=60, text="Create room"
+                width=180, height=60, text="Criar Partida"
             ),
             "join_room": Button(
                 hotspot="midtop", x=self.canvas.centerx, y=self.canvas.centery + 15,
-                width=180, height=60, text="Join room"
+                width=180, height=60, text="Conectar-se"
             ),
             "join_room.back": Button(
                 hotspot="midtop", x=self.canvas.centerx - 65, y=self.canvas.centery + 50,
-                width=105, height=45, text="Back"
+                width=105, height=45, text="Voltar"
             ),
             "join_room.join": Button(
                 hotspot="midtop", x=self.canvas.centerx + 65, y=self.canvas.centery + 50,
-                width=105, height=45, text="Join"
+                width=105, height=45, text="Entrar"
             )
         }
         self.texts = {
             "join_room.main": Text(
                 hotspot="midbottom", x=self.canvas.centerx, y=self.canvas.centery - 50,
-                text="IP Address", font_size=48
+                text="", font_size=48
             ),
-            "waiting_for_an_opponent": Text(
+            "create_room.main": Text(
                 hotspot="center", x=self.canvas.centerx, y=self.canvas.centery,
-                text="Waiting for an opponent...", font_size=48
+                text="Aguardando um oponente...", font_size=48
             ),
             "match.main": Text(
                 hotspot="midbottom", x=self.canvas.centerx, y=self.canvas.centery - 48,
@@ -120,12 +120,12 @@ class Game:
                     self.match_screen()
 
             self.backgrounds["menu"].draw(self.canvas)
-            self.texts["waiting_for_an_opponent"].draw(self.canvas)
+            self.texts["create_room.main"].draw(self.canvas)
             self.canvas.update()
 
     def join_room_screen(self):
         self.network = Client()
-        self.texts["join_room.main"].text = f"IP Address"
+        self.texts["join_room.main"].text = f"Endereço IP"
 
         while True:
             for event in pg.event.get():
@@ -146,7 +146,7 @@ class Game:
                             self.network.send(tag="game-name", message=self.name)
 
                         else:
-                            self.texts["join_room.main"].text = f"Connection error :("
+                            self.texts["join_room.main"].text = f"Erro de conexão :("
 
             for message in self.network.get():
                 if message.tag == "game-name" and message.text == self.name:
@@ -222,14 +222,14 @@ class Game:
             self.platform.update()
             self.platform.send_json(self.network)
 
-        self.texts["match.main"].text = "Get ready!"
+        self.texts["match.main"].text = "Prepare-se !"
         self.progress_bar.color = "white"
         self.progress_bar.wait(self.level_interval)
         self.texts["match.main"].text = self.platform.chosen_color
         self.progress_bar.color = self.get_rgb_from_chosen_color(self.platform.chosen_color)
         self.progress_bar.wait(self.platform.timeout)
         self.platform.destroy()
-        self.texts["match.main"].text = "Wait..."
+        self.texts["match.main"].text = ""
         self.progress_bar.color = "white"
         self.progress_bar.wait(self.level_interval)
 
@@ -243,20 +243,20 @@ class Game:
 
     def get_rgb_from_chosen_color(self, color):
         return {
-            "Blue": (51,70,166),
-            "Brown": (177,106,71),
-            "Gray": (38,38,38),
-            "Green": (71,177,71),
-            "Light Blue": (72,236,237),
-            "Light Gray": (116,116,116),
-            "Light Green": (109,241,109),
+            "Azul": (51,70,166),
+            "Marrom": (177,106,71),
+            "Cinza": (38,38,38),
+            "Verde": (71,177,71),
+            "Azul Claro": (72,236,237),
+            "Cinza Claro": (116,116,116),
+            "Verde Claro": (109,241,109),
             "Magenta": (175,95,255),
-            "Orange": (247,137,82),
-            "Pink": (240,99,239),
-            "Purple": (102,58,190),
-            "Red": (237,72,72),
-            "White": (237,237,237),
-            "Yellow": (252,224,87)
+            "Laranja": (247,137,82),
+            "Rosa": (240,99,239),
+            "Roxo": (102,58,190),
+            "Vermelho": (237,72,72),
+            "Branco": (237,237,237),
+            "Amarelo": (252,224,87)
         } [color]
         
 game = Game()
