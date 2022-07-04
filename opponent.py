@@ -2,13 +2,8 @@ import json
 from player import Player
 
 class Opponent(Player):
-    def __init__(
-        self, images_folder_url, animation_speed, rect_width, rect_height, speed, gravity_speed
-    ):
-        super().__init__(
-            images_folder_url, animation_speed, rect_width,
-            rect_height, speed, gravity_speed
-        )
+    def __init__(self, animation_speed, rect_width, rect_height, speed, gravity_speed):
+        super().__init__(animation_speed, rect_width, rect_height, speed, gravity_speed)
         self.pressed_keys = []
         self.active = False
 

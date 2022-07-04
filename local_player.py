@@ -5,12 +5,9 @@ from player import Player
 
 class LocalPlayer(Player):
     def __init__(
-        self, images_folder_url, animation_speed, rect_width,
-        rect_height, speed, gravity_speed, on_floor_confidence
+        self, animation_speed, rect_width, rect_height, speed, gravity_speed, on_floor_confidence
     ):
-        super().__init__(
-            images_folder_url, animation_speed, rect_width, rect_height, speed, gravity_speed
-        )
+        super().__init__(animation_speed, rect_width, rect_height, speed, gravity_speed)
         self.on_floor_confidence = on_floor_confidence
         self.time_of_last_data_sync = -1
 

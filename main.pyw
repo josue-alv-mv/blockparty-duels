@@ -13,6 +13,7 @@ from text import Text
 from text_field import TextField
 from button import Button
 from progress_bar import ProgressBar
+from skin_viewer import SkinViewer
 
 class Game:
     def __init__(self):
@@ -21,13 +22,11 @@ class Game:
         self.level_interval = 5
         self.canvas = Canvas(width=1280, height=720, caption="Blockparty Duels")
         self.player = LocalPlayer(
-            images_folder_url="images/lonelybryxn/", animation_speed=90,
-            rect_width=39, rect_height=76, speed=300, gravity_speed=600,
+            animation_speed=90, rect_width=39, rect_height=76, speed=300, gravity_speed=600,
             on_floor_confidence=16 # calc = gravity_speed/fps - 1 (can stuck player if fps is lower than 35)
         )
         self.opponent = Opponent(
-            images_folder_url="images/melyniu/", animation_speed=90,
-            rect_width=39, rect_height=76, speed=300, gravity_speed=600
+            animation_speed=90, rect_width=39, rect_height=76, speed=300, gravity_speed=600
         )
         self.backgrounds = {
             "menu": Image(url="images/backgrounds/menu_bg.png", hotspot="topleft", x=0, y=0),
@@ -71,6 +70,10 @@ class Game:
             "match.main": Text(
                 hotspot="midbottom", x=self.canvas.centerx, y=self.canvas.centery - 48,
                 text="", font_size=48
+            ),
+            "choose_skin.main": Text(
+                hotspot="center", x=self.canvas.centerx, y=105,
+                text="Escolha sua Skin", font_size=48
             )
         }
         self.text_field = TextField(
@@ -82,6 +85,25 @@ class Game:
             hotspot="center", x=self.canvas.centerx, y=self.canvas.centery, width=384,
             height=32, border_width=3, padding=3
         )
+        self.skin_viewers = [
+            SkinViewer(
+                hotspot="midright", x=self.canvas.centerx - 15, y=self.canvas.centery, width=230,
+                height=300, alpha=96, name="lonelybryxn",
+                images_folder_url="images/lonelybryxn/"
+            ),
+            SkinViewer(
+                hotspot="midleft", x=self.canvas.centerx + 15, y=self.canvas.centery, width=230,
+                height=300, alpha=96, name="melyniu",
+                images_folder_url="images/melyniu/"
+            )
+        ]
+        self.side_barriers = [
+            pg.Rect(0, 0, self.platform.rect.left, self.canvas.height),
+            pg.Rect(
+                self.platform.rect.left + self.platform.rect.width, 0,
+                self.canvas.width - self.platform.rect.right, self.canvas.height
+            )
+        ]
 
     def run(self):
         self.home_screen()
@@ -126,7 +148,7 @@ class Game:
             for message in self.network.get():
                 if message.tag == "game-name" and message.text == self.name:
                     self.network.send(tag="game-name", message=self.name)
-                    self.match_screen()
+                    self.choose_skin_screen()
 
             self.buttons["create_room.back"].update()
 
@@ -162,7 +184,7 @@ class Game:
 
             for message in self.network.get():
                 if message.tag == "game-name" and message.text == self.name:
-                    self.match_screen()
+                    self.choose_skin_screen()
 
             self.buttons["join_room.back"].update()
             self.buttons["join_room.join"].update()
@@ -174,11 +196,44 @@ class Game:
             self.buttons["join_room.join"].draw(self.canvas)
             self.canvas.update()
 
+    def choose_skin_screen(self):
+        skin_selected = False
+
+        while True:
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    pg.quit()
+                    sys.exit()
+
+                elif event.type == pg.MOUSEBUTTONDOWN:
+                    for skin_viewer in self.skin_viewers:
+                        if skin_viewer.focused and not skin_selected:
+                            skin_selected = True
+                            self.player.load_images(f"images/{skin_viewer.name}/")
+                            self.network.send(tag="skin", message=skin_viewer.name)
+                            
+                            if self.opponent.are_images_loaded():
+                                self.match_screen()
+
+            for message in self.network.get():
+                if message.tag == "skin":
+                    self.opponent.load_images(f"images/{message.text}/")
+
+                    if self.player.are_images_loaded():
+                        self.match_screen()
+
+            [skin_viewer.update() for skin_viewer in self.skin_viewers if not skin_selected]
+
+            self.backgrounds["menu"].draw(self.canvas)
+            self.texts["choose_skin.main"].draw(self.canvas)
+            [skin_viewer.draw(self.canvas) for skin_viewer in self.skin_viewers]
+            self.canvas.update()
+
     def match_screen(self):
         self.is_match_executor_running = False
         self.player.spawn(640, 360)
         if not self.network.is_host:
-            self.network.send(tag="start", message="match")
+            self.network.send(tag="start", message="match_executor")
             
         while True:
             for event in pg.event.get():
@@ -204,7 +259,7 @@ class Game:
 
                 # host network events
                 if self.network.is_host:
-                    if message.tag == "start" and message.text == "match":
+                    if message.tag == "start" and message.text == "match_executor":
                         self.async_run(self.match_executor)
 
                 # client network events
@@ -226,8 +281,8 @@ class Game:
                 self.canvas.update()
                 continue
 
-            self.player.update(collision_blocks=self.platform.active_slots)
-            self.opponent.update(collision_blocks=self.platform.active_slots)
+            self.player.update(collision_blocks=self.platform.active_slots + self.side_barriers)
+            self.opponent.update(collision_blocks=self.platform.active_slots + self.side_barriers)
 
             self.backgrounds["game"].draw(self.canvas)
             self.platform.draw(self.canvas)

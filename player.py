@@ -4,10 +4,9 @@ import time
 
 class Player:
     def __init__(
-        self, images_folder_url, animation_speed, rect_width, rect_height, speed, gravity_speed
+        self, animation_speed, rect_width, rect_height, speed, gravity_speed
     ):
         self.images = []
-        self.load_images(images_folder_url)
         self.animation_speed = animation_speed
         self.rect = pg.Rect(0, 0, rect_width, rect_height)
         self.speed = speed
@@ -26,6 +25,9 @@ class Player:
             img_url = images_folder_url + f"{n}.png"
             img_surf = pg.image.load(img_url).convert_alpha()
             self.images.append(img_surf)
+
+    def are_images_loaded(self):
+        return len(self.images) > 0
 
     def update_rect(self):
         self.rect.center = (self.x, self.y)

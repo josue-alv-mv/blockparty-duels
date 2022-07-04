@@ -1,6 +1,7 @@
 import socket
 import threading
 
+
 class Network:
     def __init__(self, is_host):
         self.is_host = is_host
@@ -10,14 +11,18 @@ class Network:
         self.buf_size = 16384
         self.content_splitter = '|'
         self.message_splitter = '\n'
-        self.data = []
+        self.recvd_messages = ReceivedMessages()
         self.active = False
 
+    # def get(self):
+    #     # data can be lost if the recv_thread saves a message after this function copies data ? ...
+    #     data = self.recvd_messages.copy()
+    #     self.recvd_messages.clear()
+    #     return data
+
     def get(self):
-        # data can be lost if the recv_thread saves a message after this function copies data ? ...
-        data = self.data.copy()
-        self.data.clear()
-        return data
+        # messages are removed from the queue as they're called by the "for" loop
+        return self.recvd_messages
 
     def send(self, tag, message):
         if self.active:
@@ -69,7 +74,7 @@ class Network:
             while recvd.count(self.message_splitter) > 0:
                 tag, text = recvd[:recvd.index(self.message_splitter)].split(self.content_splitter)
                 recvd = recvd[recvd.index(self.message_splitter) + 1:]
-                self.data.append(Message(tag,text))
+                self.recvd_messages.append(Message(tag,text))
 
     def close(self):
         self.socket.close()
@@ -124,6 +129,25 @@ class Server(Network):
                 self.recv_thread = threading.Thread(target=self.receive, daemon=True)
                 self.recv_thread.start()
                 self.active = True
+
+
+class ReceivedMessages:
+    def __init__(self):
+        self.list = []
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if len(self.list) == 0:
+            raise StopIteration
+
+        message = self.list[0]
+        self.list.pop(0)
+        return message
+
+    def append(self, message):
+        self.list.append(message)
 
 
 class Message:
