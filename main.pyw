@@ -1,3 +1,4 @@
+import re
 import pygame as pg
 import sys
 import time
@@ -37,13 +38,17 @@ class Game:
             x=self.canvas.centerx, y=self.canvas.height - 96
         )
         self.buttons = {
-            "create_room": Button(
+            "home.create_room": Button(
                 hotspot="midbottom", x=self.canvas.centerx, y=self.canvas.centery - 15,
                 width=180, height=60, text="Criar Partida"
             ),
-            "join_room": Button(
+            "home.join_room": Button(
                 hotspot="midtop", x=self.canvas.centerx, y=self.canvas.centery + 15,
                 width=180, height=60, text="Conectar-se"
+            ),
+            "create_room.back":Button(
+                hotspot="midtop", x=self.canvas.centerx, y=self.canvas.centery + 15,
+                width=105, height=45, text="Voltar"
             ),
             "join_room.back": Button(
                 hotspot="midtop", x=self.canvas.centerx - 65, y=self.canvas.centery + 50,
@@ -60,7 +65,7 @@ class Game:
                 text="", font_size=48
             ),
             "create_room.main": Text(
-                hotspot="center", x=self.canvas.centerx, y=self.canvas.centery,
+                hotspot="midbottom", x=self.canvas.centerx, y=self.canvas.centery - 15,
                 text="Aguardando um oponente...", font_size=48
             ),
             "match.main": Text(
@@ -77,12 +82,11 @@ class Game:
             hotspot="center", x=self.canvas.centerx, y=self.canvas.centery, width=384,
             height=32, border_width=3, padding=3
         )
-        self.player.spawn(640, 320)
 
     def run(self):
-        self.login_screen()
+        self.home_screen()
 
-    def login_screen(self):
+    def home_screen(self):
         while True:
             for event in pg.event.get():
                 if event.type == pg.QUIT:
@@ -90,18 +94,18 @@ class Game:
                     sys.exit()
 
                 elif event.type == pg.MOUSEBUTTONDOWN:
-                    if self.buttons["create_room"].focused:
+                    if self.buttons["home.create_room"].focused:
                         self.create_room_screen()
 
-                    elif self.buttons["join_room"].focused:
+                    elif self.buttons["home.join_room"].focused:
                         self.join_room_screen()
 
-            self.buttons["create_room"].update()
-            self.buttons["join_room"].update()
+            self.buttons["home.create_room"].update()
+            self.buttons["home.join_room"].update()
 
             self.backgrounds["menu"].draw(self.canvas)
-            self.buttons["create_room"].draw(self.canvas)
-            self.buttons["join_room"].draw(self.canvas)
+            self.buttons["home.create_room"].draw(self.canvas)
+            self.buttons["home.join_room"].draw(self.canvas)
             self.canvas.update()
 
     def create_room_screen(self):
@@ -114,13 +118,21 @@ class Game:
                     pg.quit()
                     sys.exit()
 
+                elif event.type == pg.MOUSEBUTTONDOWN:
+                    if self.buttons["create_room.back"].focused:
+                        self.network.close()
+                        self.home_screen()
+
             for message in self.network.get():
                 if message.tag == "game-name" and message.text == self.name:
                     self.network.send(tag="game-name", message=self.name)
                     self.match_screen()
 
+            self.buttons["create_room.back"].update()
+
             self.backgrounds["menu"].draw(self.canvas)
             self.texts["create_room.main"].draw(self.canvas)
+            self.buttons["create_room.back"].draw(self.canvas)
             self.canvas.update()
 
     def join_room_screen(self):
@@ -139,7 +151,7 @@ class Game:
 
                 elif event.type == pg.MOUSEBUTTONDOWN:
                     if self.buttons["join_room.back"].focused:
-                        self.login_screen()
+                        self.home_screen()
 
                     elif self.buttons["join_room.join"].focused:
                         if self.network.connect(self.text_field.text):
@@ -163,6 +175,8 @@ class Game:
             self.canvas.update()
 
     def match_screen(self):
+        self.is_match_executor_running = False
+        self.player.spawn(640, 360)
         if not self.network.is_host:
             self.network.send(tag="start", message="match")
             
@@ -199,6 +213,12 @@ class Game:
                         self.platform.load_json(message.text)
                         self.async_run(self.match_executor)
 
+            if not self.network.active and not self.is_match_executor_running:
+                if self.network.is_host:
+                    self.create_room_screen()
+                else:
+                    self.join_room_screen()
+
             if time.time() - self.player.time_of_last_data_sync > 0.5:
                 self.player.send_json(self.network)
 
@@ -218,6 +238,8 @@ class Game:
             self.canvas.update()
 
     def match_executor(self):
+        self.is_match_executor_running = True
+
         if self.network.is_host:
             self.platform.update()
             self.platform.send_json(self.network)
@@ -232,6 +254,11 @@ class Game:
         self.texts["match.main"].text = ""
         self.progress_bar.color = "white"
         self.progress_bar.wait(self.level_interval)
+
+        # in order to close the thread safely - the player needs to wait the end of the level
+        if not self.network.active:
+            self.is_match_executor_running = False
+            return
 
         if self.network.is_host:
             self.platform.level += 1

@@ -73,7 +73,7 @@ class Network:
 
     def close(self):
         self.socket.close()
-        if self.is_host: #and self.active:
+        if self.is_host and self.active:
             self.client.close()
 
         self.active = False
