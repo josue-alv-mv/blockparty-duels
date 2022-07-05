@@ -12,8 +12,8 @@ class Platform:
         self.rect = self.get_rect(hotspot, x, y)
         self.slots = self.get_slots()
         self.active_slots = self.slots.copy()
-        self.timeout_list = [10, 9, 8, 7, 6, 5, 4, 3, 2.5, 2]
-        self.level = 0
+        self.timeout_list = [10, 9, 8, 7, 6, 5, 4.5, 4, 3.5, 3, 2.5, 2]
+        self.level = 1
         self.timeout = None
         self.chosen_color = None
 
@@ -50,7 +50,7 @@ class Platform:
     def update(self):
         random.shuffle(self.color_list)
         self.chosen_color = random.choice(self.color_list)
-        if self.level < len(self.timeout_list): self.timeout = self.timeout_list[self.level]
+        if self.level <= len(self.timeout_list): self.timeout = self.timeout_list[self.level - 1]
         else: self.timeout = self.timeout_list[-1]
         self.active_slots = self.slots.copy()
 
@@ -61,6 +61,7 @@ class Platform:
 
     def send_json(self, network):
         data = {
+            "level": self.level,
             "color_list": self.color_list,
             "chosen_color": self.chosen_color,
             "timeout": self.timeout
@@ -70,6 +71,7 @@ class Platform:
 
     def load_json(self, json_text):
         data = json.loads(json_text)
+        self.level = data["level"]
         self.color_list = data["color_list"]
         self.chosen_color = data["chosen_color"]
         self.timeout = data["timeout"]
