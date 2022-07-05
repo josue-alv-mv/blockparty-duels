@@ -1,5 +1,6 @@
 import pygame as pg
 import time
+import random
 
 class ProgressBar:
     def __init__(self, hotspot, x, y, width, height, border_width, padding):
@@ -22,6 +23,14 @@ class ProgressBar:
             elapsed_time = time.time() - start_time
             self.progress = 1 - (elapsed_time / duration)
             time.sleep(0.01)
+
+    def animate(self, colors, duration, interval):
+        self.progress = 1
+        start_time = time.time()
+
+        while time.time() - start_time < duration:
+            self.color = random.choice(colors)
+            time.sleep(interval)
 
     def draw(self, canvas):
         border_rect = pg.Rect(0, 0, self.width, self.height)

@@ -6,7 +6,6 @@ class Player:
     def __init__(
         self, animation_speed, rect_width, rect_height, speed, gravity_speed
     ):
-        self.images = []
         self.animation_speed = animation_speed
         self.rect = pg.Rect(0, 0, rect_width, rect_height)
         self.speed = speed
@@ -19,15 +18,13 @@ class Player:
 
     def load_images(self, images_folder_url):
         # tries to add from 1.png to x.png being x the number of files in the folder
+        self.images = []
         files = os.listdir(images_folder_url)
 
         for n in range(1, len(files) + 1):
             img_url = images_folder_url + f"{n}.png"
             img_surf = pg.image.load(img_url).convert_alpha()
             self.images.append(img_surf)
-
-    def are_images_loaded(self):
-        return len(self.images) > 0
 
     def update_rect(self):
         self.rect.center = (self.x, self.y)

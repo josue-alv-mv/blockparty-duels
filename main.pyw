@@ -7,7 +7,7 @@ from network import Client, Server
 from local_player import LocalPlayer
 from opponent import Opponent
 from image import Image
-from platform import Platform
+from blocks_platform import Platform
 from text import Text
 from text_field import TextField
 from button import Button
@@ -80,15 +80,15 @@ class Game:
                 text="", font_size=60
             ),
             "match.round": Text(
-                hotspot="midtop", x=self.canvas.centerx, y=35, text="",
+                hotspot="topleft", x=35, y=35, text="",
                 font_size=28
             ),
             "match.timeout": Text(
-                hotspot="midtop", x=self.canvas.centerx, y=67, text="",
+                hotspot="topleft", x=35, y=67, text="",
                 font_size=28
             ),
             "match.ping": Text(
-                hotspot="midtop", x=self.canvas.centerx, y=99, text="Ping: ?",
+                hotspot="topleft", x=35, y=99, text="Ping: ?",
                 font_size=28
             )
         }
@@ -115,7 +115,7 @@ class Game:
         ]
         self.rectangles = {
             "match.info_bg": Rect(
-                hotspot="midtop", x=self.canvas.centerx, y=10, width=245, height=135, color="black",
+                hotspot="topleft", x=10, y=10, width=225, height=135, color="black",
                 alpha=96
             )
         } 
@@ -126,10 +126,9 @@ class Game:
                 self.canvas.width - self.platform.rect.right, self.canvas.height
             )
         ]
-        self.events = {
-            "ping_request": pg.USEREVENT
-        }
-        pg.time.set_timer(self.events["ping_request"], 5000)
+        self.events = {}
+        self.set_event_timer(id="ping_request", interval=5000)
+        self.match_winner = None
 
     def run(self):
         self.home_screen()
@@ -194,7 +193,10 @@ class Game:
                     sys.exit()
 
                 if event.type == pg.KEYDOWN:
-                    if event.unicode in self.text_field.keys:
+                    if event.unicode == "\r":
+                        self.connect()
+
+                    elif event.unicode in self.text_field.keys:
                         self.text_field.on_press(event.unicode)
 
                 elif event.type == pg.MOUSEBUTTONDOWN:
@@ -202,11 +204,7 @@ class Game:
                         self.home_screen()
 
                     elif self.buttons["join_room.join"].focused:
-                        if self.network.connect(self.text_field.text):
-                            self.network.send(tag="game-name", message=self.name)
-
-                        else:
-                            self.texts["join_room.main"].text = f"Erro de conexão :("
+                        self.connect()                        
 
             for message in self.network.get():
                 if message.tag == "game-name" and message.text == self.name:
@@ -298,29 +296,51 @@ class Game:
                         ping = int((time.time() - self.network.time_of_ping_request) * 1000)
                         self.texts["match.ping"].text = f"Ping: {ping} ms"
 
-                # host network events
+                # Host network events
                 if self.network.is_host:
                     if message.tag == "start" and message.text == "match_executor":
                         self.async_run(self.match_executor)
 
-                # client network events
+                # Client network events
                 else:
                     if message.tag == "platform":
                         self.platform.load_json(message.text)
                         self.async_run(self.match_executor)
 
+                    elif message.tag == "winner":
+                        self.match_winner = message.text
+
+            # Checks if the game has lost connection with the opponent
             if not self.network.active and not self.is_match_executor_running:
                 if self.network.is_host:
                     self.create_room_screen()
                 else:
                     self.join_room_screen()
 
+            # Checks if the game is over
+            if self.match_winner is not None and not self.is_match_executor_running:
+                self.match_winner = None
+                self.opponent.active = False
+                self.choose_skin_screen()
+
+            # Checks if the player has gone more than 0.5 seconds without syncing
             if time.time() - self.player.time_of_last_data_sync > 0.5:
                 self.player.send_json(self.network)
 
+            # Prevents game from displaying match screen before it got opponent data
             if not self.opponent.active:
                 self.canvas.update()
                 continue
+
+            # Checks if some player has fallen off the platform
+            if self.network.is_host and self.match_winner is None:
+                if self.player.y >= self.canvas.height:
+                    self.match_winner = "client"
+                    self.network.send(tag="winner", message="client")
+
+                elif self.opponent.y >= self.canvas.height:
+                    self.match_winner = "host"
+                    self.network.send(tag="winner", message="host")
 
             self.player.update(collision_blocks=self.platform.active_slots + self.side_barriers)
             self.opponent.update(collision_blocks=self.platform.active_slots + self.side_barriers)
@@ -336,6 +356,16 @@ class Game:
             self.texts["match.timeout"].draw(self.canvas)
             self.texts["match.ping"].draw(self.canvas)
             self.canvas.update()
+
+    def connect(self):
+        if self.network.connect(self.text_field.text):
+            self.network.send(tag="game-name", message=self.name)
+        else:
+            self.texts["join_room.main"].text = f"Erro de conexão :("
+
+    def async_run(self, function):
+        thread = threading.Thread(target=function, daemon=True)
+        thread.start()
 
     def match_executor(self):
         self.is_match_executor_running = True
@@ -363,13 +393,29 @@ class Game:
             self.is_match_executor_running = False
             return
 
+        if self.match_winner is not None:
+            if (self.network.is_host and self.match_winner == "host") or \
+            (not self.network.is_host and self.match_winner == "client"):
+                self.texts["match.main"].text = "Você venceu :)"
+
+            else:
+                self.texts["match.main"].text = "Você perdeu :c"
+
+            self.platform.active_slots = self.platform.slots.copy()
+            rgb_colors = [self.get_rgb_from_chosen_color(color) for color in self.platform.color_list]
+            self.progress_bar.animate(colors=rgb_colors, duration=10, interval=0.15)
+            self.is_match_executor_running = False
+            return
+
         if self.network.is_host:
             self.platform.level += 1
             self.async_run(self.match_executor)
 
-    def async_run(self, function):
-        thread = threading.Thread(target=function, daemon=True)
-        thread.start()
+    def get_couple_name(self, name):
+        return {
+            "lonelybryxn": "melyniu",
+            "melyniu": "lonelybryxn"
+        } [name]
 
     def get_rgb_from_chosen_color(self, color):
         return {
@@ -389,11 +435,9 @@ class Game:
             "Amarelo": (252,224,87)
         } [color]
 
-    def get_couple_name(self, name):
-        return {
-            "lonelybryxn": "melyniu",
-            "melyniu": "lonelybryxn"
-        } [name]
+    def set_event_timer(self, id, interval):
+        self.events[id] = pg.USEREVENT + len(self.events)
+        pg.time.set_timer(self.events[id], interval)
         
 game = Game()
 game.run()

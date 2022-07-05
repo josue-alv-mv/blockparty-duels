@@ -1,6 +1,6 @@
 import pygame as pg
 import time
-import win32clipboard
+import pyperclip
 
 class TextField:
     def __init__(
@@ -65,11 +65,8 @@ class TextField:
         self.text = self.text[:self.max_text_length]
 
     def get_clipboard_text(self):
-        win32clipboard.OpenClipboard()
-        data = win32clipboard.GetClipboardData()
-        win32clipboard.CloseClipboard()
-        for char in data:
+        for char in pyperclip.paste():
             if char not in self.keys:
                 return ""
 
-        return data
+        return pyperclip.paste()
