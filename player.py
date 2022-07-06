@@ -1,6 +1,7 @@
 import pygame as pg
 import os
 import time
+import math
 
 class Player:
     def __init__(
@@ -73,8 +74,11 @@ class Player:
 
         self.update_rect()
         if self.rect.collidelistall(collision_blocks):
-            self.y = old_y
-            self.update_rect()
+            # self.y = old_y
+            colliding_rect = collision_blocks[self.rect.collidelist(collision_blocks)]
+            if self.rect.bottom < colliding_rect.bottom:
+                self.y = math.floor(colliding_rect.top - (self.rect.height / 2))
+                self.update_rect()
 
         # finish
         self.time_of_last_update = time.time()

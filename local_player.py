@@ -5,10 +5,9 @@ from player import Player
 
 class LocalPlayer(Player):
     def __init__(
-        self, animation_speed, rect_width, rect_height, speed, gravity_speed, on_floor_confidence
+        self, animation_speed, rect_width, rect_height, speed, gravity_speed
     ):
         super().__init__(animation_speed, rect_width, rect_height, speed, gravity_speed)
-        self.on_floor_confidence = on_floor_confidence
         self.time_of_last_data_sync = -1
 
     def spawn(self, x, y):
@@ -30,7 +29,7 @@ class LocalPlayer(Player):
 
     def request_jump(self, collision_blocks):
         trusted_rect = self.rect.copy()
-        trusted_rect.height += self.on_floor_confidence
+        trusted_rect.height += 2
 
         if trusted_rect.collidelistall(collision_blocks):
             self.vectory = -(2*self.gravity_speed)

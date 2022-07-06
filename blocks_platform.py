@@ -54,6 +54,9 @@ class Platform:
         else: self.timeout = self.timeout_list[-1]
         self.active_slots = self.slots.copy()
 
+    def reset(self):
+        self.level = 1
+
     def draw(self, canvas):
         for index,color in enumerate(self.color_list):
             if self.slots[index] in self.active_slots:

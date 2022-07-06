@@ -5,8 +5,8 @@ import pyperclip
 class TextField:
     def __init__(
         self, hotspot, x, y, width, height, font_size, max_text_length, rect_alpha,
-        border_color="white", border_width=2, font_name="Consolas", font_color="white",
-        bold=False, anti_aliasing=True, keys=[]):
+        border_color="white", border_width=2, font_name="fonts/main.ttf", font_color="white",
+        anti_aliasing=True, keys=[]):
 
         self.hotspot = hotspot
         self.x = x
@@ -20,7 +20,6 @@ class TextField:
         self.rect_alpha = rect_alpha
         self.border_width = border_width
         self.border_color = border_color
-        self.bold = bold
         self.anti_aliasing = anti_aliasing
         self.cursor_rect = pg.Rect(0, 0, 1, int(self.height/1.5))
         self.text = ""
@@ -38,7 +37,7 @@ class TextField:
         pg.draw.rect(canvas.surf, self.border_color, rect, self.border_width)
 
         # draw text
-        font = pg.font.SysFont(self.font_name, self.font_size, self.bold)
+        font = pg.font.Font(self.font_name, self.font_size)
         text_surf = font.render(self.text, self.anti_aliasing, self.font_color)
         text_rect = text_surf.get_rect(center=rect.center)
         canvas.blit(text_surf, text_rect)
@@ -51,7 +50,7 @@ class TextField:
                 self.cursor_rect.center = (text_rect.midright[0] + 2, text_rect.midright[1])
 
             pg.draw.rect(canvas.surf, self.font_color, self.cursor_rect)
-
+    
     def on_press(self, unicode):
         if unicode == "\x08":
             self.text = self.text[:-1]
@@ -65,8 +64,4 @@ class TextField:
         self.text = self.text[:self.max_text_length]
 
     def get_clipboard_text(self):
-        for char in pyperclip.paste():
-            if char not in self.keys:
-                return ""
-
-        return pyperclip.paste()
+        return "".join( [char for char in pyperclip.paste() if char in self.keys] )

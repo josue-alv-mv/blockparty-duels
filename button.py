@@ -3,9 +3,9 @@ import aa_rounded_rect
 
 class Button:
     def __init__(
-            self, hotspot, x, y, width, height, text, font_size=32,
-            color = (255,128,64), color_focused=(255,145,89), border_radius=1, font_name = None,
-            font_color = "white", bold = False, anti_aliasing = True):
+            self, hotspot, x, y, width, height, text, font_size=24,
+            color = (255,128,64), color_focused=(255,145,89), border_radius=1, font_name="fonts/main.ttf",
+            font_color = "white", anti_aliasing = True):
 
         self.hotspot = hotspot
         self.x = x
@@ -19,7 +19,6 @@ class Button:
         self.font_name = font_name
         self.font_size = font_size
         self.font_color = font_color
-        self.bold = bold
         self.anti_aliasing = anti_aliasing
         self.focused = False
 
@@ -36,7 +35,7 @@ class Button:
         aa_rounded_rect.draw_rect(canvas, rect, color, self.border_radius)
 
         # draw text
-        font = pg.font.SysFont(self.font_name, self.font_size, self.bold)
+        font = pg.font.Font(self.font_name, self.font_size)
         text_surf = font.render(self.text, self.anti_aliasing, self.font_color)
         text_rect = text_surf.get_rect(center=rect.center)
         canvas.blit(text_surf, text_rect)
