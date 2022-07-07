@@ -28,5 +28,8 @@ class MusicPlayer:
     def unpause(self):
         pg.mixer.music.unpause()
 
+    def get_current_music_without_extension(self):
+        return self.current_music.split(".")[0] if self.current_music is not None else "?"
+
     def send_json(self, network):
         network.send(tag="music", message=self.current_music)

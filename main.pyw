@@ -64,7 +64,7 @@ class Game:
         self.music_player = MusicPlayer("musics/")
         self.rectangles = {
             "match.info_bg": Rect(
-                hotspot="topleft", x=10, y=10, width=250, height=135, color="black",
+                hotspot="topleft", x=10, y=10, width=350, height=167, color="black",
                 alpha=96
             )
         } 
@@ -82,7 +82,7 @@ class Game:
             ),
             "home.developer": Text(
                 hotspot="midbottom", x=self.canvas.centerx, y=self.canvas.height - 10,
-                text="Developed by Nordss", font_size=24
+                text="Developed by Nordss / Music by acatterz", font_size=24
             ),
             "join_room.main": Text(
                 hotspot="midbottom", x=self.canvas.centerx, y=self.canvas.centery - 50,
@@ -113,15 +113,19 @@ class Game:
                 text="", font_size=48
             ),
             "match.round": Text(
-                hotspot="topleft", x=35, y=30, text="",
+                hotspot="topleft", x=35, y=30, text="Rodada: ?",
                 font_size=24
             ),
             "match.timeout": Text(
-                hotspot="topleft", x=35, y=62, text="",
+                hotspot="topleft", x=35, y=62, text="Tempo limite: ?",
+                font_size=24
+            ),
+            "match.music": Text(
+                hotspot="topleft", x=35, y=94, text="Música: ?",
                 font_size=24
             ),
             "match.ping": Text(
-                hotspot="topleft", x=35, y=94, text="Ping: ?",
+                hotspot="topleft", x=35, y=126, text="Ping: ?",
                 font_size=24
             )
         }
@@ -321,7 +325,11 @@ class Game:
                         self.player.send_json(self.network)
 
                 elif event.type == self.events["music_end"]:
-                    self.music_player.play_random()
+                    if self.network.is_host:
+                        self.music_player.play_random()
+                        self.texts["match.music"].text = "Música: " + \
+                            f"{self.music_player.get_current_music_without_extension()}"
+                        self.music_player.send_json(self.network)
 
                 elif event.type == self.events["ping_request"]:
                     self.network.send(tag="ping", message="request")
@@ -344,6 +352,8 @@ class Game:
                     if message.tag == "start" and message.text == "match_executor":
                         self.async_run(self.match_executor)
                         self.music_player.play_random()
+                        self.texts["match.music"].text = "Música: " + \
+                            f"{self.music_player.get_current_music_without_extension()}"
                         self.music_player.send_json(self.network)
 
                 # Client network events
@@ -354,6 +364,8 @@ class Game:
 
                     elif message.tag == "music":
                         self.music_player.play_music(message.text)
+                        self.texts["match.music"].text = "Música: " + \
+                            f"{self.music_player.get_current_music_without_extension()}"
 
                     elif message.tag == "winner":
                         self.match_winner = message.text
@@ -403,6 +415,7 @@ class Game:
             self.rectangles["match.info_bg"].draw(self.canvas)
             self.texts["match.round"].draw(self.canvas)
             self.texts["match.timeout"].draw(self.canvas)
+            self.texts["match.music"].draw(self.canvas)
             self.texts["match.ping"].draw(self.canvas)
             self.canvas.update()
 
@@ -423,10 +436,6 @@ class Game:
         if self.network.is_host:
             self.platform.update()
             self.platform.send_json(self.network)
-
-            # if not self.music_player.is_playing_music():
-                # self.music_player.play_random()
-                # self.music_player.send_json(self.network)
             
         self.texts["match.round"].text = f"Rodada:  {self.platform.level}"
         self.texts["match.timeout"].text = f"Tempo limite:  {self.platform.timeout}s"
@@ -457,9 +466,11 @@ class Game:
             else:
                 self.texts["match.main"].text = "Você perdeu :c"
 
+            rgb_colors = [
+                self.get_rgb_from_chosen_color(color) for color in self.platform.color_list
+            ]
             self.platform.active_slots = self.platform.slots.copy()
             self.sounds["game_ending"].play()
-            rgb_colors = [self.get_rgb_from_chosen_color(color) for color in self.platform.color_list]
             self.progress_bar.animate(colors=rgb_colors, duration=10, interval=0.15)
             self.is_match_executor_running = False
             return
