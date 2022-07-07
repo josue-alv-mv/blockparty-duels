@@ -25,7 +25,9 @@ class Game:
         self.events = {"music_end": pg.USEREVENT}
         self.set_event_timer(id="ping_request", interval=5000)
 
-        self.canvas = Canvas(width=1280, height=720, caption="Blockparty Duels")
+        self.canvas = Canvas(
+            width=1280, height=720, caption="Blockparty Duels", icon_url="images/icon/icon.png"
+        )
         self.backgrounds = {
             "menu": Image(url="images/backgrounds/menu_bg.png", hotspot="topleft", x=0, y=0),
             "game": Image(url="images/backgrounds/game_bg.png", hotspot="topleft", x=0, y=0)
