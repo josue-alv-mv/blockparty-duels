@@ -8,6 +8,8 @@ class LocalPlayer(Player):
         self, animation_speed, rect_width, rect_height, speed, gravity_speed
     ):
         super().__init__(animation_speed, rect_width, rect_height, speed, gravity_speed)
+        self.mov_keys = [pg.K_LEFT, pg.K_RIGHT, pg.K_a, pg.K_d]
+        self.jump_keys = [pg.K_UP, pg.K_w]
         self.time_of_last_data_sync = -1
 
     def spawn(self, x, y):
@@ -19,10 +21,10 @@ class LocalPlayer(Player):
         all_pressed_keys = pg.key.get_pressed()
         pressed_keys = []
 
-        if all_pressed_keys[pg.K_LEFT]:
+        if all_pressed_keys[pg.K_LEFT] or all_pressed_keys [pg.K_a]:
             pressed_keys.append("left")
 
-        if all_pressed_keys[pg.K_RIGHT]:
+        if all_pressed_keys[pg.K_RIGHT] or all_pressed_keys[pg.K_d]:
             pressed_keys.append("right")
 
         return pressed_keys

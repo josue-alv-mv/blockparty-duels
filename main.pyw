@@ -66,7 +66,7 @@ class Game:
         self.music_player = MusicPlayer("musics/")
         self.rectangles = {
             "match.info_bg": Rect(
-                hotspot="topleft", x=10, y=10, width=350, height=167, color="black",
+                hotspot="topleft", x=10, y=10, width=400, height=167, color="black",
                 alpha=96
             )
         } 
@@ -315,15 +315,15 @@ class Game:
                     sys.exit()
 
                 elif event.type == pg.KEYDOWN:
-                    if event.key in [pg.K_LEFT, pg.K_RIGHT]:
+                    if event.key in self.player.mov_keys:
                         self.player.send_json(self.network)
 
-                    if event.key == pg.K_UP:
+                    if event.key in self.player.jump_keys:
                         if self.player.request_jump(collision_blocks=self.platform.active_slots):
                             self.player.send_json(self.network, flags=["jump"])
 
                 elif event.type == pg.KEYUP:
-                    if event.key in [pg.K_LEFT, pg.K_RIGHT]:
+                    if event.key in self.player.mov_keys:
                         self.player.send_json(self.network)
 
                 elif event.type == self.events["music_end"]:
@@ -492,12 +492,12 @@ class Game:
         return {
             "Azul": (51,70,166),
             "Marrom": (177,106,71),
-            "Cinza": (38,38,38),
+            "Preto": (38,38,38),
             "Verde": (71,177,71),
             "Azul Claro": (72,236,237),
-            "Cinza Claro": (116,116,116),
+            "Cinza": (116,116,116),
             "Verde Claro": (109,241,109),
-            "Magenta": (175,95,255),
+            "Lilás": (175,95,255),
             "Laranja": (247,137,82),
             "Rosa": (240,99,239),
             "Roxo": (102,58,190),
